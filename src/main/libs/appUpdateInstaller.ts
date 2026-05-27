@@ -243,6 +243,9 @@ export async function installUpdate(filePath: string): Promise<void> {
   if (process.platform === 'win32') {
     return installWindowsNsis(filePath);
   }
+  if (process.platform === 'linux') {
+    return installLinuxAppImage(filePath);
+  }
   throw new Error('Unsupported platform');
 }
 
@@ -426,6 +429,71 @@ async function installWindowsNsis(exePath: string): Promise<void> {
   console.log('[AppUpdate] Launching installer via wscript.exe...');
 
   const launcher = spawn('wscript.exe', [vbsPath], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  launcher.unref();
+
+  console.log(`[AppUpdate] Launcher PID: ${launcher.pid}, calling app.quit()`);
+  app.quit();
+}
+
+async function installLinuxAppImage(appImagePath: string): Promise<void> {
+  console.log(`[AppUpdate] Linux AppImage install`);
+  console.log(`[AppUpdate]   installer: ${appImagePath}`);
+  console.log(`[AppUpdate]   appPid: ${process.pid}`);
+
+  // Make the AppImage executable
+  await fs.promises.chmod(appImagePath, 0o755);
+  console.log('[AppUpdate] Made AppImage executable');
+
+  const currentImagePath = process.env.APPIMAGE ?? app.getPath('exe');
+  const currentImageDir = path.dirname(currentImagePath);
+
+  const ts = Date.now();
+  const tempDir = app.getPath('temp');
+  const logPath = path.join(tempDir, `lobsterai-update-${ts}.log`);
+  const scriptPath = path.join(tempDir, `lobsterai-update-${ts}.sh`);
+
+  const psEscape = (s: string) => s.replace(/'/g, "'\\''");
+
+  const shellScript = [
+    '#!/bin/sh',
+    `LOG="${psEscape(logPath)}"`,
+    `PID=${process.pid}`,
+    `CURRENT="${psEscape(currentImagePath)}"`,
+    `NEW="${psEscape(appImagePath)}"`,
+    '',
+    'echo "[$(date)] Update script started (pid=$PID)" >> "$LOG"',
+    '',
+    '# Wait for the app to fully exit',
+    'WAITED=0',
+    'while [ $WAITED -lt 120 ]; do',
+    '  if ! kill -0 "$PID" 2>/dev/null; then',
+    '    break',
+    '  fi',
+    '  sleep 1',
+    '  WAITED=$((WAITED + 1))',
+    'done',
+    'echo "[$(date)] App exited after ${WAITED}s" >> "$LOG"',
+    '',
+    '# Replace the old AppImage with the new one',
+    `rm -f "$CURRENT"`,
+    `cp "$NEW" "$CURRENT"`,
+    `chmod +x "$CURRENT"`,
+    'echo "[$(date)] AppImage replaced" >> "$LOG"',
+    '',
+    '# Launch the new AppImage',
+    `"$CURRENT" &`,
+    'echo "[$(date)] New AppImage launched" >> "$LOG"',
+  ].join('\\n');
+
+  await fs.promises.writeFile(scriptPath, shellScript, 'utf-8');
+  await fs.promises.chmod(scriptPath, 0o755);
+
+  console.log('[AppUpdate] Launching update script via nohup...');
+
+  const launcher = spawn('nohup', [scriptPath], {
     detached: true,
     stdio: 'ignore',
   });

@@ -25,6 +25,11 @@ type PlatformDownload = {
   url?: string;
 };
 
+type LinuxDownload = {
+  AppImage?: string;
+  deb?: string;
+};
+
 type UpdateApiResponse = {
   code?: number;
   data?: {
@@ -38,6 +43,7 @@ type UpdateApiResponse = {
       macIntel?: PlatformDownload;
       macArm?: PlatformDownload;
       windowsX64?: PlatformDownload;
+      linux?: LinuxDownload;
     };
   };
 };
@@ -503,11 +509,19 @@ export class AppUpdateCoordinator {
       return value?.windowsX64?.url?.trim() || getFallbackDownloadUrl();
     }
 
+    if (process.platform === 'linux') {
+      const appImage = value?.linux?.AppImage?.trim();
+      if (appImage) return appImage;
+      const debUrl = value?.linux?.deb?.trim();
+      if (debUrl) return debUrl;
+      return getFallbackDownloadUrl();
+    }
+
     return getFallbackDownloadUrl();
   }
 
   private canPredownload(url: string): boolean {
-    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+    if (process.platform !== 'darwin' && process.platform !== 'win32' && process.platform !== 'linux') {
       return false;
     }
     return this.isDirectInstallerUrl(url);
@@ -523,6 +537,9 @@ export class AppUpdateCoordinator {
     }
     if (process.platform === 'win32') {
       return normalizedPath.endsWith('.exe');
+    }
+    if (process.platform === 'linux') {
+      return normalizedPath.endsWith('.appimage') || normalizedPath.endsWith('.deb');
     }
     return false;
   }
