@@ -32,7 +32,15 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq             libgtk-3-dev libnss3-dev libasound2-dev             libxss-dev libxtst-dev libdrm-dev libgbm-dev             libnotify-dev libsecret-1-dev             dpkg-dev rpm fakeroot             python3 make g++ git
+          sudo apt-get install -y -qq \
+            libgtk-3-dev libnss3-dev libasound2-dev \
+            libxss-dev libxtst-dev libdrm-dev libgbm-dev \
+            libnotify-dev libsecret-1-dev \
+            dpkg-dev rpm fakeroot \
+            python3 make g++ git
+
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Install npm dependencies
         run: npm install
