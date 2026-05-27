@@ -1,0 +1,75 @@
+name: Build Linux Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（留空自动生成）'
+        required: false
+        default: ''
+
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-linux:
+    name: Build Linux (x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libgtk-3-dev libnss3-dev libasound2-dev \
+            libxss-dev libxtst-dev libdrm-dev libgbm-dev \
+            libnotify-dev libsecret-1-dev \
+            dpkg-dev rpm fakeroot \
+            python3 make g++ git
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Build skills
+        run: npm run build:skills
+
+      - name: Build frontend & Electron
+        run: |
+          npm run build
+          npm run compile:electron
+
+      - name: Build OpenClaw runtime (Linux x64)
+        run: npm run openclaw:runtime:linux-x64
+
+      - name: Package Linux targets
+        run: npm run dist:linux
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lobsterai-linux-packages
+          path: release/
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload to release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.AppImage
+            release/*.deb
+          generate_release_notes: false
