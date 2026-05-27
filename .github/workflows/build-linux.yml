@@ -1,6 +1,7 @@
 name: Build Linux Packages
 
 on:
+  # 手动触发：在 GitHub 仓库页面 Actions 标签页点 "Run workflow"
   workflow_dispatch:
     inputs:
       version:
@@ -8,6 +9,7 @@ on:
         required: false
         default: ''
 
+  # 或者打标签时自动构建
   push:
     tags:
       - 'v*'
@@ -39,9 +41,6 @@ jobs:
             dpkg-dev rpm fakeroot \
             python3 make g++ git
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
       - name: Install npm dependencies
         run: npm install
 
@@ -55,6 +54,8 @@ jobs:
 
       - name: Build OpenClaw runtime (Linux x64)
         run: npm run openclaw:runtime:linux-x64
+        env:
+          OPENCLAW_FORCE_BUILD: 1
 
       - name: Package Linux targets
         run: npm run dist:linux
