@@ -61,7 +61,11 @@ jobs:
           OPENCLAW_FORCE_BUILD: 1
 
       - name: Package Linux targets
-        run: npm run dist:linux
+        run: |
+          npm run openclaw:plugins
+          npm run dist:linux
+        env:
+          OPENCLAW_FORCE_PLUGIN_INSTALL: 1
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
