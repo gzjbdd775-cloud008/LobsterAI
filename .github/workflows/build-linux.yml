@@ -64,6 +64,7 @@ jobs:
           npm run openclaw:plugins
           npm run dist:linux
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENCLAW_FORCE_PLUGIN_INSTALL: 1
 
       - name: Upload build artifacts
