@@ -41,6 +41,9 @@ jobs:
             dpkg-dev rpm fakeroot \
             python3 make g++ git
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Install npm dependencies
         run: npm install
 
